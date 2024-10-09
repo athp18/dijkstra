@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dijkstra's Algorithm Visualization</title>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis-network.min.css" rel="stylesheet" type="text/css" />
+    <style>
+        /* Reset some default styles */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar styling */
+        #sidebar {
+            width: 300px;
+            background-color: #f4f4f4;
+            padding: 20px;
+            border-right: 1px solid #ddd;
+            overflow-y: auto;
+        }
+
+        #sidebar h2 {
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 20px;
+            color: #333;
+        }
+
+        #controls {
+            display: flex;
+            flex-direction: column;
+        }
+
+        #controls > div {
+            margin-bottom: 20px;
+        }
+
+        #controls button, 
+        #controls select, 
+        #controls input[type="range"], 
+        #controls input[type="text"], 
+        #controls input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        #controls label {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        #controls label input {
+            margin-right: 10px;
+        }
+
+        #delete-button {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: none;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        #delete-button:hover {
+            background-color: #c0392b;
+        }
+
+        /* Main content styling */
+        #main {
+            flex: 1;
+            display: flex;
+            flex-direction: row;
+            height: 100%;
+        }
+
+        #content {
+            flex: 3;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        #header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        #header h1 {
+            font-size: 28px;
+            color: #333;
+        }
+
+        #visualization {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            height: 100%;
+        }
+
+        /* Graph container */
+        #graph-container {
+            flex: 1;
+            border: 1px solid lightgray;
+            border-radius: 4px;
+            padding: 10px;
+            overflow: hidden;
+        }
+
+        /* Adjacency matrix sidebar */
+        #matrix-container-wrapper {
+            flex: 1;
+            width: 300px; /* Fixed width for the adjacency matrix */
+            border-left: 1px solid #ddd;
+            padding: 20px;
+            background-color: #fafafa;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #matrix-container-wrapper h3 {
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 18px;
+            color: #333;
+        }
+
+        #matrix-container {
+            flex: 1;
+            border: 1px solid lightgray;
+            border-radius: 4px;
+            padding: 10px;
+            overflow: auto; /* Enable scrolling */
+            max-height: 100%;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            min-width: 600px; /* Ensure table is scrollable horizontally if needed */
+        }
+
+        th, td {
+            border: 1px solid black;
+            padding: 5px;
+            text-align: center;
+            min-width: 50px;
+            position: relative;
+            box-sizing: border-box;
+        }
+
+        th {
+            background-color: #f0f0f0;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        /* Highlighting classes */
+        .considered {
+            background-color: #ffeb3b !important; /* Yellow */
+            transition: background-color 0.5s;
+        }
+
+        .path {
+            background-color: #4caf50 !important; /* Green */
+            color: white;
+            transition: background-color 0.5s;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 1200px) {
+            body {
+                flex-direction: column;
+            }
+
+            #sidebar {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px solid #ddd;
+            }
+
+            #main {
+                flex-direction: column;
+            }
+
+            #matrix-container-wrapper {
+                width: 100%;
+                height: 200px;
+                border-left: none;
+                border-top: 1px solid #ddd;
+            }
+
+            #matrix-container {
+                min-width: 0;
+                min-height: 0;
+            }
+        }
+
+        /* Button styles */
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        /* Slider styling */
+        #speed-slider {
+            width: 100%;
+        }
+
+        /* Dropdown and input styling */
+        select, input[type="text"], input[type="number"] {
+            padding: 8px;
+            font-size: 14px;
+        }
+
+        /* Add Edge Form Styling */
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            font-weight: normal;
+        }
+
+        /* Success and Error Messages */
+        .message {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar for controls -->
+    <div id="sidebar">
+        <h2>Controls</h2>
+        <div id="controls">
+            <!-- Node Management -->
+            <div class="form-group">
+                <button onclick="addNode()">Add Node</button>
+            </div>
+
+            <!-- Edge Management -->
+            <div class="form-group">
+                <h3>Add Edge</h3>
+                <label for="edge-from">From:</label>
+                <select id="edge-from">
+                    <!-- Options will be populated dynamically -->
+                </select>
+                <label for="edge-to">To:</label>
+                <select id="edge-to">
+                    <!-- Options will be populated dynamically -->
+                </select>
+                <label for="edge-weight">Weight:</label>
+                <input type="number" id="edge-weight" min="1" step="0.1" value="1" required>
+                <button onclick="submitAddEdge()">Add Edge</button>
+                <div id="add-edge-message" class="message"></div>
+            </div>
+
+            <!-- Random Graph Creation -->
+            <div class="form-group">
+                <button onclick="createRandomGraph()">Create Random Graph</button>
+            </div>
+
+            <!-- Clear Graph -->
+            <div class="form-group">
+                <button onclick="clearGraph()">Clear Graph</button>
+            </div>
+
+            <!-- Start and End Nodes -->
+            <div class="form-group">
+                <label for="start-node">Start Node:</label>
+                <select id="start-node">
+                    <!-- Options will be populated dynamically -->
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="end-node">End Node:</label>
+                <select id="end-node">
+                    <!-- Options will be populated dynamically -->
+                </select>
+            </div>
+
+            <!-- Animation Speed -->
+            <div class="form-group">
+                <label for="speed-slider">Animation Speed:</label>
+                <input type="range" id="speed-slider" min="100" max="2000" value="1000">
+                <span id="speed-value">1000 ms</span>
+            </div>
+
+            <!-- Weighted Toggle -->
+            <div class="form-group">
+                <label><input type="checkbox" id="weighted-toggle" checked> Weighted Graph</label>
+            </div>
+
+            <!-- Run Algorithm -->
+            <div class="form-group">
+                <button onclick="runDijkstra()">Run Dijkstra's Algorithm</button>
+            </div>
+
+            <!-- Delete Selected -->
+            <div class="form-group">
+                <button id="delete-button" onclick="deleteSelected()">Delete Selected</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main content area -->
+    <div id="main">
+        <div id="content">
+            <div id="header">
+                <h1>Dijkstra's Algorithm Visualization</h1>
+            </div>
+            <div id="visualization">
+                <div id="graph-container"></div>
+            </div>
+        </div>
+        <!-- Adjacency Matrix Sidebar -->
+        <div id="matrix-container-wrapper">
+            <h3>Adjacency Matrix</h3>
+            <div id="matrix-container"></div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize data
+        var nodes = new vis.DataSet([]);
+        var edges = new vis.DataSet([]);
+        var network = null;
+        var animationSpeed = 1000;
+        var isWeighted = true;
+        var selectedNode = null;
+        var selectedEdge = null;
+
+        // Create the network
+        function createNetwork() {
+            var container = document.getElementById('graph-container');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            var options = {
+                edges: {
+                    arrows: 'to',
+                    labelHighlightBold: true,
+                    font: { align: 'top' }
+                },
+                nodes: {
+                    font: '12px arial red',
+                    scaling: {
+                        label: true
+                    },
+                    shape: 'dot',
+                    size: 16
+                },
+                physics: {
+                    stabilization: {
+                        enabled: true,
+                        iterations: 1000,
+                        updateInterval: 25
+                    },
+                    solver: 'forceAtlas2Based',
+                    forceAtlas2Based: {
+                        gravitationalConstant: -50,
+                        centralGravity: 0.01,
+                        springLength: 100,
+                        springConstant: 0.08
+                    },
+                    repulsion: {
+                        centralGravity: 0.2,
+                        springLength: 200,
+                        springConstant: 0.05,
+                        nodeDistance: 300
+                    }
+                },
+                interaction: {
+                    multiselect: true,
+                    navigationButtons: true,
+                    keyboard: true
+                }
+            };
+            network = new vis.Network(container, data, options);
+
+            // Add event listener for selection
+            network.on("select", function(params) {
+                selectedNode = params.nodes[0];
+                selectedEdge = params.edges[0];
+                updateDeleteButton();
+            });
+
+            network.on("deselectNode", function(params) {
+                selectedNode = null;
+                updateDeleteButton();
+            });
+
+            network.on("deselectEdge", function(params) {
+                selectedEdge = null;
+                updateDeleteButton();
+            });
+
+            // Disable physics after stabilization
+            network.once("stabilized", function () {
+                network.setOptions({ physics: false });
+                console.log("Network stabilized and physics disabled.");
+            });
+
+            updateAdjacencyMatrix();
+        }
+
+        function updateDeleteButton() {
+            if (!selectedNode && !selectedEdge) {
+                document.getElementById('delete-button').style.display = 'none';
+            } else {
+                document.getElementById('delete-button').style.display = 'block';
+                if (selectedNode) {
+                    document.getElementById('delete-button').textContent = 'Delete Selected Node';
+                } else if (selectedEdge) {
+                    document.getElementById('delete-button').textContent = 'Delete Selected Edge';
+                }
+            }
+        }
+
+        // Update start and end node dropdowns
+        function updateNodeSelectors() {
+            var startSelect = document.getElementById('start-node');
+            var endSelect = document.getElementById('end-node');
+            var edgeFromSelect = document.getElementById('edge-from');
+            var edgeToSelect = document.getElementById('edge-to');
+
+            // Preserve current selections
+            var currentStart = startSelect.value;
+            var currentEnd = endSelect.value;
+
+            startSelect.innerHTML = '';
+            endSelect.innerHTML = '';
+            edgeFromSelect.innerHTML = '';
+            edgeToSelect.innerHTML = '';
+
+            nodes.forEach(function(node) {
+                var optionStart = document.createElement('option');
+                optionStart.value = node.id;
+                optionStart.text = node.label;
+                startSelect.add(optionStart);
+
+                var optionEnd = document.createElement('option');
+                optionEnd.value = node.id;
+                optionEnd.text = node.label;
+                endSelect.add(optionEnd);
+
+                var optionFrom = document.createElement('option');
+                optionFrom.value = node.id;
+                optionFrom.text = node.label;
+                edgeFromSelect.add(optionFrom);
+
+                var optionTo = document.createElement('option');
+                optionTo.value = node.id;
+                optionTo.text = node.label;
+                edgeToSelect.add(optionTo);
+            });
+
+            // Restore selections if possible
+            if (nodes.get(currentStart)) {
+                startSelect.value = currentStart;
+            }
+            if (nodes.get(currentEnd)) {
+                endSelect.value = currentEnd;
+            }
+        }
+
+        // Add a node
+        function addNode() {
+            var nodeId = nodes.length + 1;
+            nodes.add({ id: nodeId, label: 'Node ' + nodeId });
+            updateNodeSelectors();
+            updateAdjacencyMatrix();
+            // Restart physics to reposition nodes
+            if (network) {
+                network.setOptions({ physics: true });
+                network.stabilize();
+                network.setOptions({ physics: false });
+            }
+            displayMessage('Node added successfully!', 'success');
+        }
+
+        // Submit Add Edge
+        function submitAddEdge() {
+            var from = parseInt(document.getElementById('edge-from').value);
+            var to = parseInt(document.getElementById('edge-to').value);
+            var weightInput = document.getElementById('edge-weight').value;
+            var weight = isWeighted ? parseFloat(weightInput) : 1;
+
+            var messageDiv = document.getElementById('add-edge-message');
+            messageDiv.style.display = 'none';
+            messageDiv.classList.remove('success', 'error');
+            messageDiv.textContent = '';
+
+            // Validation
+            if (from === to) {
+                displayMessage('Source and destination nodes must be different.', 'error', 'add-edge-message');
+                return;
+            }
+
+            if (isWeighted && (isNaN(weight) || weight <= 0)) {
+                displayMessage('Please enter a valid positive number for weight.', 'error', 'add-edge-message');
+                return;
+            }
+
+            // Check if edge already exists
+            var existing = edges.get({
+                filter: function(edge) {
+                    return edge.from === from && edge.to === to;
+                }
+            });
+
+            if (existing.length > 0) {
+                displayMessage('Edge already exists.', 'error', 'add-edge-message');
+                return;
+            }
+
+            // Add the edge, conditionally add the label if the graph is weighted
+            if (isWeighted) {
+                edges.add({ from: from, to: to, label: String(weight), value: weight });
+            } else {
+                edges.add({ from: from, to: to, value: weight }); // No label for unweighted edges
+            }
+
+            updateAdjacencyMatrix();
+            // Restart physics to reposition nodes
+            if (network) {
+                network.setOptions({ physics: true });
+                network.stabilize();
+                network.setOptions({ physics: false });
+            }
+
+            // Clear input fields
+            document.getElementById('edge-from').selectedIndex = 0;
+            document.getElementById('edge-to').selectedIndex = 0;
+            document.getElementById('edge-weight').value = isWeighted ? '1' : '1';
+
+            displayMessage('Edge added successfully!', 'success', 'add-edge-message');
+        }
+
+        // Display messages
+        function displayMessage(message, type, elementId = null) {
+            var messageDiv = elementId ? document.getElementById(elementId) : alert;
+            if (elementId) {
+                messageDiv.style.display = 'block';
+                messageDiv.classList.add(type);
+                messageDiv.textContent = message;
+                // Hide after 3 seconds
+                setTimeout(function() {
+                    messageDiv.style.display = 'none';
+                    messageDiv.classList.remove(type);
+                    messageDiv.textContent = '';
+                }, 3000);
+            } else {
+                alert(message);
+            }
+        }
+
+        // Create a random graph
+        function createRandomGraph() {
+            var nodeCount = prompt('Enter the number of nodes:', '5');
+            var edgeProbability = prompt('Enter edge creation probability (0 to 1):', '0.3');
+
+            nodeCount = parseInt(nodeCount);
+            edgeProbability = parseFloat(edgeProbability);
+
+            if (isNaN(nodeCount) || isNaN(edgeProbability) || edgeProbability < 0 || edgeProbability > 1) {
+                alert('Invalid input. Please enter numeric values with edge probability between 0 and 1.');
+                return;
+            }
+
+            // Clear existing nodes and edges
+            nodes.clear();
+            edges.clear();
+
+            // Add nodes
+            for (var i = 1; i <= nodeCount; i++) {
+                nodes.add({ id: i, label: 'Node ' + i });
+            }
+
+            // Add edges
+            for (var i = 1; i <= nodeCount; i++) {
+                for (var j = 1; j <= nodeCount; j++) {
+                    if (i !== j && Math.random() < edgeProbability) {
+                        if (isWeighted) {
+                            var weight = (Math.random() * 10 + 1).toFixed(1); // Random weight between 1 and 10
+                            weight = parseFloat(weight);
+                        } else {
+                            var weight = 1;
+                        }
+                        // Avoid duplicate edges
+                        var existing = edges.get({
+                            filter: function(edge) {
+                                return edge.from === i && edge.to === j;
+                            }
+                        });
+                        if (existing.length === 0) {
+                            edges.add({
+                                from: i,
+                                to: j,
+                                label: isWeighted ? String(weight) : undefined,
+                                value: weight
+                            });
+                        }
+                    }
+                }
+            }
+
+            updateNodeSelectors();
+            createNetwork();
+            displayMessage('Random graph created successfully!', 'success');
+        }
+
+        // Clear the graph
+        function clearGraph() {
+            if (nodes.length < 1) {
+                alert('The graph is already empty.');
+                return;
+            }
+            nodes.clear();
+            edges.clear();
+            updateNodeSelectors();
+            createNetwork();
+            displayMessage('Graph cleared successfully!', 'success');
+        }
+
+        // Delete selected node or edge
+        function deleteSelected() {
+            if (selectedNode !== null) {
+                nodes.remove({ id: selectedNode });
+                edges.remove(edges.get().filter(edge => edge.from === selectedNode || edge.to === selectedNode));
+                selectedNode = null;
+                updateNodeSelectors();
+                displayMessage('Selected node and its edges deleted successfully!', 'success');
+            } else if (selectedEdge !== null) {
+                edges.remove({ id: selectedEdge });
+                selectedEdge = null;
+                displayMessage('Selected edge deleted successfully!', 'success');
+            }
+            updateDeleteButton();
+            updateAdjacencyMatrix();
+            // Restart physics to reposition nodes
+            if (network) {
+                network.setOptions({ physics: true });
+                network.stabilize();
+                network.setOptions({ physics: false });
+            }
+        }
+
+        // Update adjacency matrix
+        function updateAdjacencyMatrix() {
+            var matrix = [];
+            var nodeIds = nodes.getIds();
+
+            if (nodeIds.length === 0) {
+                document.getElementById('matrix-container').innerHTML = '';
+                return;
+            }
+
+            // Initialize matrix with zeros
+            for (var i = 0; i < nodeIds.length; i++) {
+                matrix[i] = new Array(nodeIds.length).fill(0);
+            }
+
+            // Fill matrix with edge weights
+            edges.forEach(function(edge) {
+                var fromIndex = nodeIds.indexOf(edge.from);
+                var toIndex = nodeIds.indexOf(edge.to);
+                matrix[fromIndex][toIndex] = edge.value;
+            });
+
+            // Create table
+            var table = '<table><thead><tr><th></th>';
+            nodeIds.forEach(function(id) {
+                table += '<th>' + id + '</th>';
+            });
+            table += '</tr></thead><tbody>';
+
+            for (var i = 0; i < nodeIds.length; i++) {
+                table += '<tr><th>' + nodeIds[i] + '</th>';
+                for (var j = 0; j < nodeIds.length; j++) {
+                    var cellId = 'cell-' + nodeIds[i] + '-' + nodeIds[j];
+                    table += '<td id="' + cellId + '">' + matrix[i][j] + '</td>';
+                }
+                table += '</tr>';
+            }
+            table += '</tbody></table>';
+
+            document.getElementById('matrix-container').innerHTML = table;
+        }
+
+        // Run Dijkstra's Algorithm
+        async function runDijkstra() {
+            var startNodeId = parseInt(document.getElementById('start-node').value);
+            var endNodeId = parseInt(document.getElementById('end-node').value);
+            var distances = {};
+            var previous = {};
+            var pq = [];
+
+            if (isNaN(startNodeId) || isNaN(endNodeId)) {
+                alert('Please select valid start and end nodes.');
+                return;
+            }
+
+            if (startNodeId === endNodeId) {
+                alert('Start and end nodes are the same.');
+                return;
+            }
+
+            // Initialize distances and priority queue
+            nodes.forEach(function(node) {
+                distances[node.id] = Infinity;
+                previous[node.id] = null;
+            });
+            distances[startNodeId] = 0;
+            pq.push({ id: startNodeId, dist: 0 });
+
+            // Animation: reset node and edge colors
+            nodes.forEach(function(node) {
+                nodes.update({ id: node.id, color: { background: 'lightblue' } });
+            });
+            edges.forEach(function(edge) {
+                edges.update({ id: edge.id, color: { color: '#848484' } });
+            });
+
+            updateAdjacencyMatrix(); // Reset any previous highlights
+
+            while (pq.length > 0) {
+                // Sort priority queue
+                pq.sort(function(a, b) { return a.dist - b.dist; });
+                var currentNode = pq.shift();
+                var currentNodeId = currentNode.id;
+
+                // Skip if the current node has already been visited with a shorter distance
+                if (currentNode.dist > distances[currentNodeId]) {
+                    continue;
+                }
+
+                // Animation: highlight current node
+                nodes.update({ id: currentNodeId, color: { background: '#ffcc00' } }); // Yellow
+                await sleep(animationSpeed);
+
+                // Stop if we reach the end node
+                if (currentNodeId === endNodeId) {
+                    break;
+                }
+
+                // Get neighbors
+                var neighborEdges = edges.get({
+                    filter: function(edge) {
+                        return edge.from === currentNodeId;
+                    }
+                });
+
+                for (let edge of neighborEdges) {
+                    var neighborId = edge.to;
+                    var alt = distances[currentNodeId] + parseFloat(edge.value);
+
+                    // Highlight the edge being considered
+                    highlightMatrixEdge(currentNodeId, neighborId);
+
+                    if (alt < distances[neighborId]) {
+                        distances[neighborId] = alt;
+                        previous[neighborId] = currentNodeId;
+                        pq.push({ id: neighborId, dist: alt });
+
+                        // Highlight edge in graph
+                        edges.update({ id: edge.id, color: { color: 'red' } });
+                    }
+
+                    await sleep(animationSpeed);
+                }
+
+                // Animation: reset node color after processing
+                nodes.update({ id: currentNodeId, color: { background: 'lightblue' } });
+            }
+
+            // Reconstruct path
+            var path = [];
+            var u = endNodeId;
+            if (previous[u] !== null || u === startNodeId) {
+                while (u) {
+                    path.unshift(u);
+                    u = previous[u];
+                }
+            }
+
+            // Animation: highlight path
+            for (var i = 0; i < path.length; i++) {
+                nodes.update({ id: path[i], color: { background: '#66bb6a' } }); // Green
+                if (i < path.length - 1) {
+                    var edge = edges.get({
+                        filter: function(edge) {
+                            return edge.from === path[i] && edge.to === path[i + 1];
+                        }
+                    })[0];
+                    if (edge) {
+                        edges.update({ id: edge.id, color: { color: '#ef5350' } }); // Reddish
+                        // Highlight in adjacency matrix
+                        highlightPathEdge(path[i], path[i + 1]);
+                    }
+                }
+                await sleep(animationSpeed);
+            }
+
+            if (distances[endNodeId] !== Infinity) {
+                alert('Shortest path: ' + path.join(' -> ') + '\nTotal distance: ' + distances[endNodeId].toFixed(2));
+            } else {
+                alert('No path exists between the selected nodes.');
+            }
+        }
+
+        // Highlight a matrix cell for an edge being considered
+        function highlightMatrixEdge(from, to) {
+            var cellId = 'cell-' + from + '-' + to;
+            var cell = document.getElementById(cellId);
+            if (cell) {
+                cell.classList.add('considered');
+                // Remove highlight after some time
+                setTimeout(function() {
+                    cell.classList.remove('considered');
+                }, animationSpeed);
+            }
+        }
+
+        // Highlight a matrix cell for an edge in the final path
+        function highlightPathEdge(from, to) {
+            var cellId = 'cell-' + from + '-' + to;
+            var cell = document.getElementById(cellId);
+            if (cell) {
+                cell.classList.add('path');
+            }
+        }
+
+        // Sleep function for animation
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Event listeners
+        document.getElementById('speed-slider').addEventListener('input', function() {
+            animationSpeed = parseInt(this.value);
+            document.getElementById('speed-value').innerText = animationSpeed + ' ms';
+        });
+
+        document.getElementById('weighted-toggle').addEventListener('change', function() {
+            isWeighted = this.checked;
+        });
+
+        // Initialize
+        createNetwork();
+        updateNodeSelectors();
+    </script>
+
+</body>
+</html>
